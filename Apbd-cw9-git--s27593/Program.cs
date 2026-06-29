@@ -1,4 +1,6 @@
 using Apbd_cw9_git__s27593.DAL;
+using Apbd_cw9_git__s27593.Services;
+using Apbd_cw9_git__s27593.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace Apbd_cw9_git__s27593;
@@ -19,6 +21,8 @@ public class Program
 
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
+        builder.Services.AddScoped<ICourseService, CourseService>();
+        builder.Services.AddScoped<ISubmissionService, SubmissionService>();
 
         var app = builder.Build();
 
@@ -28,7 +32,7 @@ public class Program
             app.UseSwaggerUI();
         }
 
-        app.UseHttpsRedirection();
+        // app.UseHttpsRedirection();
 
         app.UseAuthorization();
 

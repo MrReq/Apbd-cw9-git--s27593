@@ -1,7 +1,6 @@
-﻿using Apbd_cw9_git__s27593.DAL;
-using Apbd_cw9_git__s27593.DTOs;
+﻿using Apbd_cw9_git__s27593.DTOs;
+using Apbd_cw9_git__s27593.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Apbd_cw9_git__s27593.Controllers;
 
@@ -9,56 +8,27 @@ namespace Apbd_cw9_git__s27593.Controllers;
 [Route("api/[controller]")]
 public class CoursesController : ControllerBase
 {
-    private readonly UniversityTasksDbContext _context;
+    private readonly ICourseService _courseService;
 
-    public CoursesController(UniversityTasksDbContext context)
+    public CoursesController(ICourseService courseService)
     {
-        _context = context;
+        _courseService = courseService;
     }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<CourseDto>>> GetCourses()
     {
-        var courses = await _context.Courses
-            .AsNoTracking()
-            .Select(c => new CourseDto
-            {
-                CourseId = c.CourseId,
-                Code = c.Code,
-                Name = c.Name,
-                Ects = c.Credits,
-                AssignmentsCount = c.Assignments.Count
-            })
-            .ToListAsync();
-
-        return Ok(courses);
+        return Ok(await _courseService.GetCoursesAsync());
     }
 
     [HttpGet("{id}/assignments")]
     public async Task<ActionResult<IEnumerable<AssignmentDto>>> GetAssignments(int id)
     {
-        var courseExists = await _context.Courses
-            .AsNoTracking()
-            .AnyAsync(c=>c.CourseId == id);
+        var assignments = await _courseService.GetAssignmentsAsync(id);
 
-        if (!courseExists)
-        {
-            return NotFound("Course not found, this courseID does not exist");
-        }
-        
-        var assigments = await _context.Assignments
-            .AsNoTracking()
-            .Where(a => a.CourseId == id)
-            .Select(a => new AssignmentDto
-            {
-                AssignmentId = a.AssignmentId,
-                Title = a.Title,
-                DueDate =  a.DueDate,
-                MaxPoints =  a.MaxPoints,
-                IsPublished =  a.IsPublished,
-                SubmissionsCount =  a.Submissions.Count
-            }).ToListAsync();
-        
-        return Ok(assigments);
+        if (assignments == null)
+            return NotFound();
+
+        return Ok(assignments);
     }
 }

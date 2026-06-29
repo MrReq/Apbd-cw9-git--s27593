@@ -1,36 +1,25 @@
-﻿using Apbd_cw9_git__s27593.DAL;
-using Apbd_cw9_git__s27593.DTOs;
-using Apbd_cw9_git__s27593.ModelsAndEntities;
+﻿using Apbd_cw9_git__s27593.DTOs;
+using Apbd_cw9_git__s27593.Services;
+using Apbd_cw9_git__s27593.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Apbd_cw9_git__s27593.Controllers;
 
+[ApiController]
+[Route("api/[controller]")]
 public class SubmissionsController : ControllerBase
 {
-    private readonly UniversityTasksDbContext _context;
-    public SubmissionsController(UniversityTasksDbContext context)
+    private readonly ISubmissionService _submissionService;
+
+    public SubmissionsController(ISubmissionService submissionService)
     {
-        _context = context;
+        _submissionService = submissionService;
     }
-    
+
     [HttpGet("{id}")]
     public async Task<ActionResult<SubmissionDto>> GetSubmission(int id)
     {
-        var submission = await _context.Submissions
-            .AsNoTracking()
-            .Where(s => s.SubmissionId == id)
-            .Select(s => new SubmissionDto
-            {
-                SubmissionId = s.SubmissionId,
-                Student = s.Student.FirstName + " " + s.Student.LastName,
-                Assignment = s.Assignment.Title,
-                RepositoryUrl = s.RepositoryUrl,
-                Status = s.Status,
-                Score = s.Score,
-                Feedback = s.Feedback
-            })
-            .FirstOrDefaultAsync();
+        var submission = await _submissionService.GetSubmissionAsync(id);
 
         if (submission == null)
             return NotFound();
@@ -38,83 +27,38 @@ public class SubmissionsController : ControllerBase
         return Ok(submission);
     }
 
-    [HttpGet]
-    public async Task<IActionResult> CreateSubmissions(CreateSubmissionDto createSubmissionDto)
+    [HttpPost]
+    public async Task<IActionResult> CreateSubmission(CreateSubmissionDto dto)
     {
-        var assigmentexists = await _context.Assignments
-            .AnyAsync(a => a.AssignmentId == createSubmissionDto.AssignmentId);
-        
-        if (!assigmentexists)
-        {
-            return BadRequest("Assignment not found, it does not exist");
-        }
-        
-        var studentExist = await _context.Students
-            .AnyAsync(s => s.StudentId == createSubmissionDto.StudentId);
+        var submission = await _submissionService.CreateSubmissionAsync(dto);
 
-        if (!studentExist)
-        {
-            return BadRequest("Student not found, he or she does not exist");
-        }
-        
-        var alreadyAdded = await _context.Submissions
-            .AnyAsync(sub => sub.AssignmentId == createSubmissionDto.AssignmentId 
-            && sub.StudentId == createSubmissionDto.StudentId);
-
-        if (alreadyAdded)
-        {
-            return BadRequest("Submission is already in use");
-        }
-
-        var submission = new Submission
-        {
-            AssignmentId = createSubmissionDto.AssignmentId,
-            StudentId = createSubmissionDto.StudentId,
-            RepositoryUrl = createSubmissionDto.RepositoryUrl,
-            SubmittedAt = DateTime.Now,
-            Status = "Submitted"
-        };
-
-        _context.Submissions.Add(submission);
-        await _context.SaveChangesAsync();
-        
         return CreatedAtAction(
             nameof(GetSubmission),
             new { id = submission.SubmissionId },
             submission.SubmissionId);
-        
-        return Ok(submission);
     }
 
     [HttpPut("{id}/grade")]
-    public async Task<IActionResult> GradeSubmission(int id, GradeSubmissionDto gradeSubmissionDto)
+    public async Task<IActionResult> GradeSubmission(int id, GradeSubmissionDto dto)
     {
-        var submission = await _context.Submissions
-            .Include(s => s.Assignment)
-            .FirstOrDefaultAsync(s => s.SubmissionId == id);
+        var success = await _submissionService.GradeSubmissionAsync(id, dto);
 
-        if (submission == null)
-        {
-            return  BadRequest("Submission not found, it does not exist");
-        }
+        if (!success)
+            return NotFound();
 
-        if (gradeSubmissionDto.Score < 0)
-        {
-            return BadRequest("Score is less than 0");
-        }
-
-        if (gradeSubmissionDto.Score > submission.Assignment.MaxPoints)
-        {
-            return BadRequest("Score is greater than maximum points");
-        }
-        
-        submission.Score = gradeSubmissionDto.Score;
-        submission.Feedback = gradeSubmissionDto.Feedback;
-        submission.Status = "Submitted";
-        
-        await _context.SaveChangesAsync();
-        
-        
         return NoContent();
     }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteSubmission(int id)
+    {
+        var result = await _submissionService.DeleteSubmissionAsync(id);
+
+        if (!result.Success)
+            return BadRequest(result.Error);
+
+        return NoContent();
+    }
+    
+
 }

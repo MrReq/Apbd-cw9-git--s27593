@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "sh/sGszVsQg=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\HolvePC\\Desktop\\All1\\Uczelnie\\PJATK\\Przedmioty naukowe\\Rok IV (ITN)\\VI\\APBD Piotr Gago\\Rider\\Apbd-cw9-git--s27593\\Apbd-cw9-git--s27593\\Apbd-cw9-git--s27593.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\HolvePC\\.nuget\\packages\\microsoft.aspnetcore.openapi\\10.0.6\\microsoft.aspnetcore.openapi.10.0.6.nupkg.sha512",
+    "C:\\Users\\HolvePC\\.nuget\\packages\\microsoft.openapi\\2.0.0\\microsoft.openapi.2.0.0.nupkg.sha512",
+    "C:\\Users\\HolvePC\\.nuget\\packages\\system.text.json\\8.0.5\\system.text.json.8.0.5.nupkg.sha512"
+  ],
+  "logs": []
+}

@@ -1,0 +1,217 @@
+Ćwiczenia 9
+Below you can find the full exercise content together with downloadable attachments.
+
+Zadanie praktyczne: REST API z EF Core Database First
+W tym ćwiczeniu budujesz ASP.NET Core Web API na podstawie istniejącej bazy danych SQL Server. Schemat bazy danych jest źródłem prawdy, a klasy EF Core generujemy w podejściu Database First.
+
+Kontekst biznesowy
+Uczelnia ma już bazę danych SQL Server używaną do przechowywania informacji o studentach, kursach, zapisach na kursy, zadaniach i oddanych rozwiązaniach. Zespół ma przygotować nowe REST API dla tej istniejącej bazy. Nie zaczynamy od klas C#. Punktem startowym jest schemat bazy danych, a początkowy model aplikacji generujemy za pomocą scaffoldingu EF Core.
+
+Zadanie ćwiczy tematy z wykładu: Database First, scaffolding, kod generowany, klasy częściowe, operacje CRUD, zapytania LINQ, Include, AsNoTracking, Change Tracker oraz integrację z kontrolerami ASP.NET Core.
+
+Ważne: w tym zadaniu nie używamy migracji EF Core. Baza już istnieje. Zmiany schematu reprezentują skrypty SQL, a model C# jest generowany z bazy danych.
+
+Dostarczony skrypt bazy danych
+Użyj skryptu SQL zadanie_1_db_first_university_tasks_setup.sql. Skrypt tworzy i wypełnia danymi bazę ApbdLecture9DbFirstTask.
+
+Skrypt tworzy pięć tabel:
+
+Students - dane studentów, w tym numer indeksu i status aktywności,
+Courses - kursy uczelniane,
+Enrollments - relacja między studentami i kursami,
+Assignments - zadania opublikowane dla kursów,
+Submissions - oddane rozwiązania studentów, punkty, komentarze i status.
+Uruchom SQL Server w Dockerze
+Możesz użyć lokalnej instalacji SQL Servera. Jeżeli chcesz uruchomić SQL Server w Dockerze, użyj przykładu poniżej:
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: apbd_lecture9_db_first
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "YourStrongPassword123!"
+    ports:
+      - "14333:1433"
+Copy code
+Uruchom skrypt przygotowujący bazę
+Z głównego katalogu materiałów skopiuj skrypt do kontenera i wykonaj go:
+
+docker cp apbd/wyklad_9/zadanie_1_db_first_university_tasks_setup.sql apbd_lecture9_db_first:/tmp/setup.sql
+docker exec -it apbd_lecture9_db_first /opt/mssql-tools18/bin/sqlcmd \
+  -S localhost -U sa -P "YourStrongPassword123!" -C \
+  -i /tmp/setup.sql
+Copy code
+Jeżeli korzystasz z lokalnej instalacji SQL Servera, uruchom ten sam skrypt w Azure Data Studio albo SQL Server Management Studio.
+
+Konfiguracja projektu
+Utwórz projekt ASP.NET Core Web API o nazwie UniversityTasksDbFirstApi. Używamy kontrolerów, a nie Minimal API.
+
+dotnet new webapi --use-controllers -n UniversityTasksDbFirstApi
+cd UniversityTasksDbFirstApi
+dotnet add package Microsoft.EntityFrameworkCore.SqlServer
+dotnet add package Microsoft.EntityFrameworkCore.Design
+Copy code
+Jeżeli narzędzia dotnet-ef brakuje, zainstaluj je albo zaktualizuj:
+
+dotnet tool install --global dotnet-ef
+dotnet tool update --global dotnet-ef
+Copy code
+W pliku appsettings.json użyj takiego connection stringa:
+
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost,14333;Database=ApbdLecture9DbFirstTask;User Id=sa;Password=YourStrongPassword123!;TrustServerCertificate=True"
+  }
+}
+Copy code
+Wygeneruj model EF Core
+Wygeneruj kontekst i klasy encji z istniejącej bazy danych. Pliki wygenerowane powinny trafić do osobnych folderów, żeby było jasne, który kod pochodzi ze scaffoldingu.
+
+dotnet ef dbcontext scaffold \
+  "Server=localhost,14333;Database=ApbdLecture9DbFirstTask;User Id=sa;Password=YourStrongPassword123!;TrustServerCertificate=True" \
+  Microsoft.EntityFrameworkCore.SqlServer \
+  --context UniversityTasksDbContext \
+  --context-dir Data \
+  --output-dir Models \
+  --no-onconfiguring
+Copy code
+Po scaffoldingu zarejestruj wygenerowany kontekst w Program.cs:
+
+builder.Services.AddDbContext<UniversityTasksDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+Copy code
+Nie edytuj bezpośrednio plików wygenerowanych. EF Core generuje klasy jako partial. Własną logikę umieszczaj w osobnych plikach, na przykład Student.Partial.cs albo Assignment.Partial.cs.
+
+Proponowana struktura projektu
+UniversityTasksDbFirstApi/
+  Controllers/
+    CoursesController.cs
+    StudentsController.cs
+    SubmissionsController.cs
+  Data/
+    UniversityTasksDbContext.cs
+  DTOs/
+    CourseDto.cs
+    AssignmentDto.cs
+    StudentDashboardDto.cs
+    SubmissionDto.cs
+    CreateSubmissionDto.cs
+    GradeSubmissionDto.cs
+  Models/
+    Assignment.cs
+    Course.cs
+    Enrollment.cs
+    Student.cs
+    Submission.cs
+  ModelExtensions/
+    Student.Partial.cs
+    Assignment.Partial.cs
+  Services/
+    SubmissionService.cs
+  Program.cs
+  appsettings.json
+Copy code
+Wymagania dotyczące klas częściowych
+Dodaj własną logikę bez modyfikowania plików wygenerowanych przez scaffolding.
+
+Student.Partial.cs
+Dodaj właściwość tylko do odczytu FullName, która zwraca imię i nazwisko.
+Dodaj metodę HasAcademicEmail(), która zwraca true, gdy adres e-mail kończy się na @students.example.edu.
+public partial class Student
+{
+    public string FullName => $"{FirstName} {LastName}";
+
+    public bool HasAcademicEmail()
+    {
+        return Email.EndsWith("@students.example.edu", StringComparison.OrdinalIgnoreCase);
+    }
+}
+Copy code
+Assignment.Partial.cs
+Dodaj metodę IsOverdue(DateTime now).
+Metoda powinna zwracać true, gdy DueDate jest wcześniejsze niż now.
+Wymagania dotyczące DTO
+Nie zwracaj bezpośrednio encji EF wygenerowanych przez scaffolding z kontrolerów. Przygotuj DTO dla odpowiedzi API i ciał żądań.
+
+CourseDto - identyfikator kursu, kod, nazwa, liczba punktów ECTS, liczba zadań,
+AssignmentDto - identyfikator zadania, tytuł, termin, maksymalna liczba punktów, informacja o publikacji, liczba oddanych rozwiązań,
+StudentDashboardDto - identyfikator studenta, numer indeksu, pełne imię i nazwisko, status aktywności, zapisy na kursy, oddane rozwiązania,
+SubmissionDto - identyfikator rozwiązania, student, zadanie, adres repozytorium, status, punkty, komentarz,
+CreateSubmissionDto - identyfikator zadania, identyfikator studenta, adres repozytorium,
+GradeSubmissionDto - punkty i komentarz.
+Endpointy do zaimplementowania
+Metoda Endpoint Wymagana logika GET /api/courses?activeOnly=true Zwraca kursy z liczbą zadań. Użyj AsNoTracking() oraz projekcji do DTO. GET /api/courses/{idCourse}/assignments?publishedOnly=true Zwraca zadania dla jednego kursu. Uwzględnij liczbę oddanych rozwiązań. Zwróć 404, jeśli kurs nie istnieje. GET /api/students/{idStudent}/dashboard Zwraca dane studenta, zapisy na kursy i oddane rozwiązania. Uniknij problemu N+1, używając Include, ThenInclude albo projekcji. POST /api/submissions Tworzy nowe oddane rozwiązanie po sprawdzeniu reguł biznesowych. PUT /api/submissions/{idSubmission}/grade Ocenia oddane rozwiązanie. Pokaż działanie Change Trackera przez pobranie encji, zmianę właściwości i wywołanie SaveChangesAsync(). DELETE /api/submissions/{idSubmission} Usuwa oddane rozwiązanie tylko wtedy, gdy nie jest ocenione. Zwróć 400, gdy rozwiązanie ma już status oceniony.
+Reguły biznesowe
+Tworzenie oddanego rozwiązania
+Student musi istnieć.
+Student musi być aktywny.
+Zadanie musi istnieć i być opublikowane.
+Student musi być zapisany na kurs, do którego należy zadanie, ze statusem Active albo Completed.
+Ten sam student nie może oddać tego samego zadania drugi raz.
+Jeżeli aktualny czas jest po DueDate, ustaw status na Late; w przeciwnym razie ustaw Submitted.
+RepositoryUrl nie może być puste i powinno zaczynać się od https://.
+Ocenianie rozwiązania
+Oddane rozwiązanie musi istnieć.
+Liczba punktów nie może być mniejsza niż 0.
+Liczba punktów nie może być większa niż MaxPoints zadania.
+Po ocenieniu ustaw status na Graded.
+Usuwanie rozwiązania
+Oddane rozwiązanie musi istnieć.
+Ocenionego rozwiązania nie można usunąć.
+Po poprawnym usunięciu zwróć 204 No Content.
+Przykładowe ciała żądań
+Utworzenie oddanego rozwiązania
+{
+  "assignmentId": 3,
+  "studentId": 5,
+  "repositoryUrl": "https://github.com/student/performance-review"
+}
+Copy code
+Ocenienie rozwiązania
+{
+  "score": 23,
+  "feedback": "Correct use of projections and AsNoTracking. Please improve error messages."
+}
+Copy code
+Wymagania dotyczące EF Core
+Użyj scaffoldingu Database First do wygenerowania encji i DbContext.
+Nie używaj migracji w tym zadaniu.
+Nie edytuj bezpośrednio wygenerowanych plików encji.
+Użyj klas częściowych do własnej logiki.
+Użyj AsNoTracking() dla zapytań odczytujących listy.
+Użyj Include, ThenInclude albo projekcji, żeby uniknąć problemu N+1.
+Używaj asynchronicznych metod EF Core, takich jak ToListAsync(), FirstOrDefaultAsync(), AnyAsync() i SaveChangesAsync().
+Używaj DTO zamiast wystawiać bezpośrednio encje EF.
+Sugerowana kolejność pracy
+Uruchom SQL Server i wykonaj skrypt zadanie_1_db_first_university_tasks_setup.sql.
+Utwórz projekt ASP.NET Core Web API z kontrolerami.
+Dodaj pakiety EF Core i provider SQL Server.
+Uruchom komendę scaffoldingu i przejrzyj wygenerowane pliki.
+Zarejestruj UniversityTasksDbContext w dependency injection.
+Dodaj DTO i klasy częściowe.
+Najpierw zaimplementuj endpointy odczytujące, używając projekcji i AsNoTracking().
+Zaimplementuj endpointy tworzące, aktualizujące i usuwające dane.
+Przetestuj błędne scenariusze biznesowe w Swaggerze albo Postmanie.
+Uruchom scaffolding ponownie z flagą --force dopiero wtedy, gdy rozumiesz, które pliki zostaną nadpisane.
+Kryteria ukończenia zadania
+Baza danych jest tworzona z dostarczonego skryptu SQL.
+Klasy modelu EF Core są wygenerowane z bazy danych przez scaffolding.
+Projekt nie używa migracji EF Core.
+Własny kod znajduje się poza wygenerowanymi plikami, na przykład w klasach częściowych, DTO, serwisach i kontrolerach.
+API implementuje wszystkie wymagane endpointy.
+Endpointy tylko do odczytu używają AsNoTracking() tam, gdzie ma to sens.
+Dashboard studenta unika problemu N+1.
+API zwraca sensowne statusy HTTP: 200, 201, 204, 400, 404 i 409 tam, gdzie jest to uzasadnione.
+Co to zadanie ma przećwiczyć
+start pracy od istniejącej bazy danych SQL Server,
+scaffolding encji EF Core i DbContext,
+oddzielanie kodu wygenerowanego od kodu własnego,
+bezpieczne użycie klas częściowych,
+implementowanie operacji CRUD z EF Core,
+używanie Include, projekcji i AsNoTracking(),
+integrację EF Core z kontrolerami REST API w ASP.NET Core.

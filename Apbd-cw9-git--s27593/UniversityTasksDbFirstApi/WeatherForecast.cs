@@ -1,4 +1,4 @@
-namespace Apbd_cw9_git__s27593;
+namespace UniversityTasksDbFirstApi;
 
 public class WeatherForecast
 {

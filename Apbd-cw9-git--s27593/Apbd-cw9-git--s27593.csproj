@@ -8,7 +8,30 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.6"/>
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.6" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9">
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+          <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.9" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.9">
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+          <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="DAL\" />
+      <Folder Include="DTOs\Requests\" />
+      <Folder Include="DTOs\Responses\" />
+      <Folder Include="Exceptions\" />
+      <Folder Include="Images\" />
+      <Folder Include="Middleware\" />
+      <Folder Include="ModelsAndEntities\" />
+      <Folder Include="Repositories\Implementations\" />
+      <Folder Include="Repositories\Interfaces\" />
+      <Folder Include="Views\" />
     </ItemGroup>
 
 </Project>
